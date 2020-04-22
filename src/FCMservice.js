@@ -137,6 +137,18 @@ class FCMService {
     return notification
   }
 
+  scheduleNotification = (notification, days, minutes) => {
+    const date = new Date()
+    if (days) {
+      date.setDate(date.getDate() + days)
+    }
+    if (minutes) {
+      date.setMinutes(date.getMinutes() + minutes)
+    }
+
+    firebase.notifications()
+      .scheduleNotification(notification, { fireDate: date.getTime() })
+  }
 
 
   displayNotification = (notification) => {

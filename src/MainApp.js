@@ -2,7 +2,7 @@ import React from 'react'
 import { View, StyleSheet, Text } from 'react-native'
 import { fcmService } from './FCMservice'
 import AsyncStorage from '@react-native-community/async-storage';
-
+import DashBoard from './Dashboard'
 
 export default class MainApp extends React.Component {
   constructor(props) {
@@ -67,7 +67,7 @@ export default class MainApp extends React.Component {
     let { container } = style
     return (
       <View style={container}>
-        <Text>Sample React native  firebase</Text>
+        <DashBoard />
       </View>
     )
   }
@@ -76,7 +76,7 @@ export default class MainApp extends React.Component {
 const style = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: 'center'
+    // alignItems: "center",
+    // justifyContent: 'center'
   }
 })
