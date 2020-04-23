@@ -5,6 +5,9 @@ class FCMService {
   register = (onRegister, onNotification, onOpenNotification) => {
     this.checkPermission(onRegister)
     this.createNoitificationListeners(onRegister, onNotification, onOpenNotification)
+    firebase.notifications().getScheduledNotifications().then(res => {
+      console.log(res, "res")
+    })
   }
 
   checkPermission = (onRegister) => {
@@ -125,27 +128,20 @@ class FCMService {
       .android.setVibrate(obj.vibrate)
       .android.setAutoCancel(true)
 
-    const action = new firebase.notifications.Android.Action('test_action', 'ic_launcher', 'My Test Action');
+    // const action = new firebase.notifications.Android.Action('test_action', 'ic_launcher', 'My Test Action');
 
-    const remoteInput = new firebase.notifications.Android.RemoteInput('inputText')
-      .setLabel('Message');
+    // const remoteInput = new firebase.notifications.Android.RemoteInput('inputText')
+    //   .setLabel('Message');
 
-    action.addRemoteInput(remoteInput);
+    // action.addRemoteInput(remoteInput);
 
-    notification.android.addAction(action);
+    // notification.android.addAction(action);
 
     return notification
   }
 
-  scheduleNotification = (notification, days, minutes) => {
-    const date = new Date()
-    if (days) {
-      date.setDate(date.getDate() + days)
-    }
-    if (minutes) {
-      date.setMinutes(date.getMinutes() + minutes)
-    }
-
+  scheduleNotification = (notification, datetime) => {
+    const date = new Date(datetime)
     firebase.notifications()
       .scheduleNotification(notification, { fireDate: date.getTime() })
   }

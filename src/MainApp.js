@@ -23,7 +23,7 @@ export default class MainApp extends React.Component {
     //   console.log(e);
     // }
 
-    fcmService.register(this.onRegister, this.onNotification, this.onOpenNotification)
+    // fcmService.register(this.onRegister, this.onNotification, this.onOpenNotification)
   }
 
   onRegister = (token) => {

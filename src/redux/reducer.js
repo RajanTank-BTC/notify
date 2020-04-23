@@ -12,7 +12,7 @@ const AddReminderReducer = (state = [], action) => {
       ]
     }
     case 'DELETE_REMINDER': {
-      let data = state
+      let data = state.slice(0)
       data.splice(data.indexOf(data.filter(item => item.title === action.payload)[0]))
       return data
     }

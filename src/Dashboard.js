@@ -1,12 +1,13 @@
 import React, { Component } from 'react';
 import { Platform, StyleSheet, Text, SafeAreaView, View, TextInput, ScrollView, } from 'react-native';
-import { ListItem, Input, Button, Icon } from 'react-native-elements';
+import { ListItem, Input, Button, Icon, Overlay } from 'react-native-elements';
 import firebase from 'react-native-firebase';
 import DateTimePicker from 'react-native-modal-datetime-picker';
 import moment from 'moment';
 // import GIFT from '../Gift.png'
 import { connect } from 'react-redux'
 import { addReminder, deleteReminder } from './redux/action'
+import { fcmService } from './FCMservice'
 
 class Dashboard extends Component {
   state = {
@@ -15,22 +16,108 @@ class Dashboard extends Component {
     notificationTime: moment(),
     notificationTitle: '',
     notificationDescription: '',
-    notificationRepeat: ''
+    notificationRepeat: '',
+    errorMsgTitle: '',
+    errorMsgDes: '',
+    timeerror: false,
+    isVisibleOverlay: false
   };
+
+  componentDidMount() {
+    fcmService.register(this.onRegister, this.onNotification, this.onOpenNotification)
+  }
+
+  onRegister = (token) => {
+    console.log("[Notification fcm ] onRegister:", token)
+  }
+
+  onNotification = (notify) => {
+    console.log("[Notification fcm ] : onNotification:", notify)
+    const notification = fcmService.buildNotification(this.createNotification(notify))
+    fcmService.displayNotification(notification)
+  }
+
+  onOpenNotification = (notify) => {
+    console.log("[Notification Fcm ] : onOpenNotification ", notify)
+    // alert("Open Notification :" + notify._data.title)
+    this.setState({ notifyData: notify._data }, () => this.setState({ isVisibleOverlay: true }))
+  }
 
   setReminder = () => {
     const { notificationTime, enableNotification } = this.state;
-
     const { notificationDescription, notificationTitle } = this.state
-    let body = {
-      title: notificationTitle,
-      description: notificationDescription,
-      time: notificationTime
+    let status = moment(notificationTime).isAfter(moment().add(10, "m"))
+    if (!status) {
+      this.setState({
+        timeerror: true
+      })
     }
-    const { addReminder } = this.props
-    addReminder(body)
-    this.resetState()
+    // else {
+    if (notificationDescription == '' || notificationTitle === '') {
+      if (notificationTitle == '') {
+        this.setState({ errorMsgTitle: 'Enter title please' })
+      }
+      if (notificationDescription === '') {
+        this.setState({ errorMsgDes: 'Enter dec please' })
+      }
+    }
+    else {
+      let body = {
+        bodyForLocal: {
+          title: notificationTitle,
+          description: notificationDescription,
+          time: notificationTime
+        },
+        bodyForSchdeule: {
+          _title: notificationTitle,
+          _body: notificationDescription,
+          _data: {
+            title: notificationTitle,
+            body: notificationDescription,
+          },
+          _notificationId: Math.random().toString(),
+          time: notificationTime
+        }
+      }
+      const { addReminder } = this.props
+      addReminder(body.bodyForLocal)
+      this.scheduleReminder(body.bodyForSchdeule)
+      this.resetState()
+    }
+    // }
   };
+
+  scheduleReminder = (data) => {
+    const notification = fcmService.buildNotification(this.createNotification(data))
+    console.log("notification ", notification)
+    fcmService.scheduleNotification(notification, data.time)
+  }
+
+
+  createNotification = (notify) => {
+    console.log(notify)
+    const channelObj = {
+      channelId: "SmapleChannelID",
+      channelName: "SmapleChannelName",
+      channelDes: "SmapleChannelDes"
+    }
+
+    const channel = fcmService.buildChannel(channelObj)
+    console.log(channel)
+    const buildNotify = {
+      title: notify._title,
+      content: notify._body,
+      sound: 'default',
+      channel: channel,
+      data: notify._data,
+      colorBgIcon: "#1A243B",
+      largeIcon: 'ic_launcher',
+      smallIcon: 'ic_launcher',
+      vibrate: true,
+      dataId: notify._notificationId
+    }
+    return buildNotify
+  }
 
   resetState = () => {
     this.setState({
@@ -57,15 +144,16 @@ class Dashboard extends Component {
     this.hideDateTimePicker();
 
     this.setState({
+      timeerror: false,
       notificationTime: moment(date),
     });
   };
 
   render() {
     const { isDateTimePickerVisible,
-      notificationTime, notificationTitle, notificationDescription } = this.state;
-    const { reminder } = this.props
-    console.log(reminder)
+      notificationTime, notificationTitle, notificationDescription,
+      errorMsgDes, errorMsgTitle, timeerror, notifyData } = this.state;
+    const { reminder, state } = this.props
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.cardTitleView}>
@@ -77,19 +165,23 @@ class Dashboard extends Component {
           onPress={this.showDateTimePicker}
           rightElement={<Text style={{ opacity: 0.7 }}>{moment(notificationTime).format('LT')}</Text>}
         />
+        {timeerror &&
+          <Text style={{ marginLeft: 10 }}>You can set time after 10 minutes of current time</Text>}
         <View style={styles.titleView}>
           <Input
             style={styles.titleinput}
             value={notificationTitle}
-            onChangeText={(text) => this.setState({ notificationTitle: text })}
+            onChangeText={(text) => this.setState({ notificationTitle: text, errorMsgTitle: '' })}
             placeholder="Title"
+            errorMessage={errorMsgTitle}
           />
           <Input
+            errorMessage={errorMsgDes}
             multiline={true}
             numberOfLines={3}
             style={styles.titleinput}
             value={notificationDescription}
-            onChangeText={(text) => this.setState({ notificationDescription: text })}
+            onChangeText={(text) => this.setState({ notificationDescription: text, errorMsgDes: '' })}
             placeholder="Description"
           />
         </View>
@@ -119,12 +211,19 @@ class Dashboard extends Component {
             }
           </ScrollView>
         </View>
-
+        <Overlay
+          isVisible={this.state.isVisibleOverlay}
+          onBackdropPress={() => this.setState({ isVisibleOverlay: false })}>
+          <View style={{ flexDirection: 'column' }}>
+            <Text style={{ margin: 20, fontSize: 20, fontWeight: '600' }}>{notifyData && notifyData.title}</Text>
+            <Text style={{ margin: 20, fontSize: 16 }}>{notifyData && notifyData.body}</Text>
+          </View>
+        </Overlay>
         <DateTimePicker
           isVisible={isDateTimePickerVisible}
           onConfirm={this.handleDatePicked}
           onCancel={this.hideDateTimePicker}
-          mode="time"
+          mode="datetime"
           is24Hour={false}
           date={new Date(notificationTime)}
           titleIOS="Pick your Notification time"
@@ -176,6 +275,7 @@ const mapDispatchToProps = {
 
 const mapStateToProps = (state) => {
   return ({
+    state: state,
     reminder: state.reminders
   })
 }
